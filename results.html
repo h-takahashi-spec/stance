@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>スタンス分類ボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .wrap { max-width: 1120px; }
+  header { display: grid; gap: 6px; }
+  .status { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 13px; color: var(--muted); }
+  .status label { display: flex; gap: 6px; align-items: center; }
+  .status .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* 分布 */
+  .dist { display: grid; gap: 12px; border-top: 2px solid var(--fg); padding-top: 14px; }
+  .distrow { display: grid; grid-template-columns: 7.5em 1fr 4em; gap: 10px; align-items: center; }
+  .distrow .vname { font-weight: 700; }
+  .distrow .n { font-family: var(--mono); font-size: 13px; color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+  .stack { display: flex; height: 30px; border-radius: 3px; overflow: hidden; background: var(--panel); border: 1px solid var(--line); min-width: 0; }
+  .stack span { display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; color: #fff; white-space: nowrap; overflow: hidden; min-width: 0; transition: flex-basis .4s ease; }
+  .stack span.l-none { color: var(--muted); background: repeating-linear-gradient(135deg, var(--st-none) 0 6px, transparent 6px 12px); }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .l-physical { background: var(--st-physical); }
+  .l-design { background: var(--st-design); }
+  .l-intentional { background: var(--st-intentional); }
+  .l-unclear { background: var(--st-unclear); }
+  .l-none { background: var(--st-none); }
+
+  /* スタンスの説明 */
+  .stances { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-top: 10px; }
+  .stances > div { min-width: 0; border-left: 4px solid var(--line); padding: 2px 0 2px 12px; }
+  .stances b { display: block; }
+  .stances .ex { font-size: 13px; color: var(--muted); }
+  details.box { border: 1px solid var(--line); border-radius: 4px; background: var(--panel); padding: 10px 14px; }
+  details.box > summary { cursor: pointer; font-weight: 700; }
+
+  /* タブ */
+  .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tabs button { border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 10px 16px; font-size: 15px; white-space: nowrap; }
+  .tabs button[aria-selected="true"] { border-bottom-color: var(--accent); font-weight: 700; }
+  .panel { display: grid; gap: 14px; }
+  .vnote { color: var(--muted); max-width: 70ch; font-size: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { border-radius: 999px; padding: 4px 12px; font-size: 13px; display: inline-flex; gap: 6px; align-items: center; }
+  .chips button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+  .chips .c { font-family: var(--mono); font-variant-numeric: tabular-nums; opacity: .8; }
+
+  /* 回答カード */
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+  .ans { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+  .ans .txt { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .ans .meta { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 700; padding: 2px 10px; border-radius: 999px; color: #fff; }
+  .tag.l-none { color: var(--muted); background: none; border: 1px dashed var(--muted); }
+  .src { font-size: 12px; color: var(--muted); }
+  .reason { font-size: 13px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+  .ans select { font-size: 13px; padding: 3px 8px; }
+  .empty { color: var(--muted); padding: 24px 0; }
+
+  /* 先生用 */
+  .teacher { display: grid; gap: 10px; }
+  .teacher .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .teacher input { max-width: 220px; }
+  .msg { font-size: 13px; color: var(--muted); }
+  .msg.err { color: var(--danger); }
+  .split { display: grid; gap: 18px; align-items: start; }
+  .player-col, .answers-col { display: grid; gap: 12px; min-width: 0; align-content: start; }
+  .player-wrap { display: grid; gap: 8px; }
+  .stage:fullscreen { display: flex; align-items: center; justify-content: center; border-radius: 0; }
+  .stage:fullscreen canvas { width: min(100vw, calc(100vh * 16 / 9)); height: auto; }
+  @media (min-width: 900px) {
+    .split { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
+    .player-col { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 12px); }
+    .cards { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+  }
+
+  @media (max-width: 520px) {
+    .distrow { grid-template-columns: 1fr 3.5em; }
+    .distrow .vname { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="demoBanner" class="banner" hidden>サンプルデータを表示しています。config.js に GAS_URL を設定すると、実際の回答が表示されます。</div>
+
+  <header>
+    <div class="eyebrow">DENNETT'S THREE STANCES · 物理 / 設計 / 志向</div>
+    <h1>スタンス分類ボード</h1>
+    <p class="lede">図形の動画を見て書いた解釈を、デネットの三つのスタンスに分けて並べています。分類はAIが下書きし、先生が確認して直しています。</p>
+    <div class="status">
+      <span>回答 <span class="num" id="total">0</span> 件</span>
+      <span>未分類 <span class="num" id="unc">0</span> 件</span>
+      <span id="updated">読み込み中…</span>
+      <button id="refreshBtn">更新</button>
+      <label><input type="checkbox" id="auto" checked> 20秒ごとに更新</label>
+    </div>
+  </header>
+
+  <section class="dist" aria-labelledby="distTitle">
+    <h2 id="distTitle">動画ごとの分布</h2>
+    <div id="distRows"></div>
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <details class="box">
+    <summary>三つのスタンスとは</summary>
+    <div class="stances">
+      <div style="border-left-color:var(--st-physical)"><b>物理スタンス</b>物体の位置・速度・衝突・力で説明する。<p class="ex">例：三角が円にぶつかり、円ははじかれて画面の外へ動いた。</p></div>
+      <div style="border-left-color:var(--st-design)"><b>設計スタンス</b>誰かが作った仕組みやルール、機能として説明する。<p class="ex">例：三角は近くのものを追うようにプログラムされている。</p></div>
+      <div style="border-left-color:var(--st-intentional)"><b>志向スタンス</b>信念・欲求・意図・感情を持つ存在として説明する。<p class="ex">例：三角は二人を追い出したくて怒っていた。</p></div>
+      <div style="border-left-color:var(--st-unclear)"><b>判定不能</b>空欄、無関係、短すぎるなどで判断できない。</div>
+    </div>
+  </details>
+
+  <section class="panel" aria-label="動画ごとの回答">
+    <div class="tabs" role="tablist" id="tabs"></div>
+    <div class="split">
+      <div class="player-col">
+        <div class="player-wrap" id="playerWrap">
+          <div class="stage" id="stage"><canvas id="cv" aria-label="図形が動く無音の動画"></canvas><div class="tc" id="tc">0:00</div></div>
+          <div class="bar">
+            <button class="primary" id="playBtn">▶ 再生</button>
+            <button id="restartBtn">最初から</button>
+            <select id="speed" aria-label="再生速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+            <button id="fsBtn">全画面</button>
+          </div>
+          <div class="scrub"><input type="range" id="scrub" min="0" max="60" step="0.1" value="0" aria-label="再生位置"><span class="time" id="time">0:00</span></div>
+        </div>
+        <p class="vnote" id="vnote"></p>
+      </div>
+      <div class="answers-col">
+    <div class="chips" id="chips" role="group" aria-label="スタンスで絞り込む"></div>
+    <div class="cards" id="cards"></div>
+      </div>
+    </div>
+  </section>
+
+  <details class="box" id="teacherBox">
+    <summary>先生用</summary>
+    <div class="teacher">
+      <div class="row" id="loginRow">
+        <label for="pw">パスワード</label>
+        <input type="password" id="pw" autocomplete="current-password">
+        <button id="loginBtn">入る</button>
+        <span class="msg" id="loginMsg"></span>
+      </div>
+      <div id="tools" hidden>
+        <div class="row">
+          <button class="accent" id="classifyBtn">未分類をAIで分類する</button>
+          <span class="msg" id="classifyMsg"></span>
+        </div>
+        <p class="note">各回答カードのメニューでラベルを直せます。直したラベルは「先生」と表示され、AIの再分類で上書きされません。</p>
+        <div class="row"><button id="logoutBtn">先生モードを終える</button></div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="scenes.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var LABELS = [
+    { key: 'physical', name: '物理スタンス', short: '物理' },
+    { key: 'design', name: '設計スタンス', short: '設計' },
+    { key: 'intentional', name: '志向スタンス', short: '志向' },
+    { key: 'unclear', name: '判定不能', short: '不能' },
+    { key: '', name: '未分類', short: '未' }
+  ];
+  var NAME = {}; LABELS.forEach(function (l) { NAME[l.key] = l.name; });
+  var VIDEOS = ['A', 'B', 'C'];
+  var S = { rows: [], video: 'A', filter: 'all', pw: null, busy: false };
+  try { S.pw = sessionStorage.getItem('hs-teacher-pw'); } catch (e) {}
+  try { var v = localStorage.getItem('hs-results-video'); if (VIDEOS.indexOf(v) >= 0) S.video = v; } catch (e) {}
+
+  function cls(k) { return 'l-' + (k || 'none'); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  /* ---------- 凡例・タブ ---------- */
+  $('legend').innerHTML = LABELS.map(function (l) { return '<span><i class="' + cls(l.key) + '"></i>' + l.name + '</span>'; }).join('');
+  $('tabs').innerHTML = VIDEOS.map(function (v) {
+    return '<button role="tab" id="tab-' + v + '" data-v="' + v + '">動画' + v + '「' + HS.SCENES[v].name + '」</button>';
+  }).join('');
+  $('tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-v]'); if (!b) return;
+    S.video = b.dataset.v; S.filter = 'all';
+    try { localStorage.setItem('hs-results-video', S.video); } catch (e2) {}
+    player.setScene(HS.SCENES[S.video]);
+    $('scrub').max = HS.SCENES[S.video].duration;
+    render();
+  });
+
+  /* ---------- 描画 ---------- */
+  function counts(rows) {
+    var c = { physical: 0, design: 0, intentional: 0, unclear: 0, '': 0 };
+    rows.forEach(function (r) { c[r.label || ''] = (c[r.label || ''] || 0) + 1; });
+    return c;
+  }
+
+  function render() {
+    var rows = S.rows;
+    $('total').textContent = rows.length;
+    $('unc').textContent = rows.filter(function (r) { return !r.label; }).length;
+
+    // 分布
+    $('distRows').innerHTML = VIDEOS.map(function (v) {
+      var rs = rows.filter(function (r) { return r.videoId === v; }), c = counts(rs), n = rs.length;
+      var segs = n ? LABELS.map(function (l) {
+        var k = c[l.key]; if (!k) return '';
+        var pct = k / n * 100;
+        return '<span class="' + cls(l.key) + '" style="flex-basis:' + pct + '%" title="' + l.name + ' ' + k + '件（' + Math.round(pct) + '%）">' + (pct >= 9 ? l.short + ' ' + Math.round(pct) + '%' : '') + '</span>';
+      }).join('') : '';
+      return '<div class="distrow"><span class="vname">動画' + v + '「' + HS.SCENES[v].name + '」</span><div class="stack" role="img" aria-label="動画' + v + 'の分布">' + segs + '</div><span class="n">n=' + n + '</span></div>';
+    }).join('');
+
+    // タブ
+    VIDEOS.forEach(function (v) { $('tab-' + v).setAttribute('aria-selected', String(v === S.video)); });
+    $('vnote').textContent = HS.SCENES[S.video].note;
+
+    // 絞り込み
+    var vr = rows.filter(function (r) { return r.videoId === S.video; }), c = counts(vr);
+    var chips = [{ key: 'all', name: 'すべて', n: vr.length }].concat(LABELS.map(function (l) { return { key: l.key, name: l.name, n: c[l.key] }; }));
+    $('chips').innerHTML = chips.map(function (ch) {
+      var k = ch.key === 'all' ? 'all' : (ch.key || 'none');
+      var on = (S.filter === k);
+      var dot = ch.key === 'all' ? '' : '<i class="' + cls(ch.key) + '" style="width:9px;height:9px;border-radius:50%;display:inline-block"></i>';
+      return '<button data-f="' + k + '" aria-pressed="' + on + '">' + dot + ch.name + ' <span class="c">' + ch.n + '</span></button>';
+    }).join('');
+
+    // カード
+    var shown = vr.filter(function (r) { return S.filter === 'all' || (r.label || 'none') === S.filter; });
+    if (!shown.length) {
+      $('cards').innerHTML = '<p class="empty">' + (vr.length ? 'この区分の回答はありません。' : 'この動画への回答はまだありません。') + '</p>';
+      return;
+    }
+    var teacher = !!S.pw;
+    $('cards').innerHTML = shown.map(function (r) {
+      var meta;
+      if (teacher) {
+        meta = '<select data-id="' + esc(r.id) + '" aria-label="ラベルを変更">' +
+          LABELS.filter(function (l) { return l.key; }).map(function (l) {
+            return '<option value="' + l.key + '"' + (r.label === l.key ? ' selected' : '') + '>' + l.name + '</option>';
+          }).join('') +
+          (r.label ? '' : '<option value="" selected>未分類</option>') +
+          (r.source === 'teacher' ? '<option value="__auto">AIの判定に戻す' + (r.autoLabel ? '（' + NAME[r.autoLabel] + '）' : '') + '</option>' : '') +
+          '</select>';
+      } else {
+        meta = '<span class="tag ' + cls(r.label) + '">' + NAME[r.label || ''] + '</span>';
+      }
+      var src = r.source === 'teacher' ? '先生' : (r.source === 'auto' ? 'AI' : '');
+      return '<article class="ans"><div class="txt">' + esc(r.text) + '</div>' +
+        '<div class="meta">' + meta + (src ? '<span class="src">' + src + 'の判定</span>' : '') + '</div>' +
+        (r.reason && r.source !== 'teacher' ? '<div class="reason">' + esc(r.reason) + '</div>' : '') +
+        (r.reason && r.source === 'teacher' && r.autoLabel && r.autoLabel !== r.label ? '<div class="reason">AIは' + NAME[r.autoLabel] + 'と判定：' + esc(r.reason) + '</div>' : '') +
+        '</article>';
+    }).join('');
+  }
+
+  $('chips').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-f]'); if (!b) return;
+    S.filter = b.dataset.f; render();
+  });
+
+  /* ---------- データ取得 ---------- */
+  async function refresh() {
+    if (API.demo) { S.rows = S.rows.length ? S.rows : demoRows(); stamp(); render(); return; }
+    try {
+      var d = await API.get({ action: 'results' });
+      if (!d || !d.ok) throw new Error((d && d.error) || '読み込めませんでした');
+      S.rows = d.rows || [];
+      stamp(); render();
+    } catch (err) {
+      $('updated').textContent = '読み込みに失敗しました（' + err.message + '）。「更新」をもう一度押してください。';
+    }
+  }
+  function stamp() {
+    var d = new Date();
+    $('updated').textContent = '最終更新 ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+  }
+  $('refreshBtn').addEventListener('click', refresh);
+  setInterval(function () {
+    if (!$('auto').checked || document.hidden || S.busy) return;
+    if (document.activeElement && document.activeElement.tagName === 'SELECT') return;
+    refresh();
+  }, 20000);
+
+  /* ---------- 先生モード ---------- */
+  function setTeacher(on) {
+    $('loginRow').hidden = on; $('tools').hidden = !on;
+    if (on) $('teacherBox').open = true;
+    render();
+  }
+  $('loginBtn').addEventListener('click', async function () {
+    var pw = $('pw').value; if (!pw) return;
+    $('loginMsg').className = 'msg'; $('loginMsg').textContent = '確認しています…';
+    try {
+      if (!API.demo) {
+        var r = await API.post({ action: 'verify', password: pw });
+        if (!r.ok) throw new Error('パスワードが違います');
+      }
+      S.pw = pw; try { sessionStorage.setItem('hs-teacher-pw', pw); } catch (e) {}
+      $('loginMsg').textContent = ''; $('pw').value = '';
+      setTeacher(true);
+    } catch (err) {
+      S.pw = null; $('loginMsg').className = 'msg err'; $('loginMsg').textContent = err.message;
+    }
+  });
+  $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('loginBtn').click(); });
+  $('logoutBtn').addEventListener('click', function () {
+    S.pw = null; try { sessionStorage.removeItem('hs-teacher-pw'); } catch (e) {}
+    setTeacher(false);
+  });
+
+  $('cards').addEventListener('change', async function (e) {
+    var sel = e.target.closest('select[data-id]'); if (!sel || !S.pw) return;
+    var id = sel.dataset.id, val = sel.value, row = S.rows.filter(function (r) { return r.id === id; })[0];
+    if (!row) return;
+    var label = val === '__auto' ? '' : val;
+    sel.disabled = true; S.busy = true;
+    try {
+      if (!API.demo) await API.post({ action: 'relabel', password: S.pw, id: id, label: label });
+      if (label) { row.label = label; row.source = 'teacher'; }
+      else { row.label = row.autoLabel || ''; row.source = row.autoLabel ? 'auto' : ''; }
+      render();
+    } catch (err) {
+      sel.disabled = false;
+      $('classifyMsg').className = 'msg err'; $('classifyMsg').textContent = '保存できませんでした：' + err.message;
+    } finally { S.busy = false; }
+  });
+
+  $('classifyBtn').addEventListener('click', async function () {
+    var btn = $('classifyBtn'), msg = $('classifyMsg');
+    btn.disabled = true; S.busy = true; msg.className = 'msg';
+    var total = 0;
+    try {
+      if (API.demo) {
+        S.rows.forEach(function (r) { if (!r.label) { r.label = r.autoLabel = 'intentional'; r.source = 'auto'; r.reason = '（サンプル）図形に意図を帰属している。'; total++; } });
+        msg.textContent = total + '件を分類しました。';
+      } else {
+        for (var guard = 0; guard < 40; guard++) {
+          msg.textContent = '分類しています…（ここまで ' + total + ' 件）';
+          var r = await API.post({ action: 'classify', password: S.pw, limit: 20 });
+          total += r.done;
+          if (r.errors && r.errors.length && !r.done) throw new Error(r.errors[0]);
+          if (!r.remaining || !r.done) break;
+        }
+        msg.textContent = total + '件を分類しました。';
+        await refresh();
+      }
+      render();
+    } catch (err) {
+      msg.className = 'msg err'; msg.textContent = '途中で止まりました（' + total + '件は分類済み）：' + err.message;
+      refresh();
+    } finally { btn.disabled = false; S.busy = false; }
+  });
+
+  /* ---------- 動画の再生 ---------- */
+  var player = HS.createPlayer($('cv'), HS.SCENES[S.video], {
+    onTime: function (p) { $('scrub').value = p.t.toFixed(1); $('time').textContent = HS.fmt(p.t) + ' / ' + HS.fmt(p.scene.duration); $('tc').textContent = HS.fmt(p.t); },
+    onState: function (p) { $('playBtn').textContent = p.playing ? '❚❚ 一時停止' : '▶ 再生'; }
+  });
+  $('scrub').max = HS.SCENES[S.video].duration;
+  player.seek(0);
+  $('playBtn').addEventListener('click', function () { player.toggle(); });
+  $('restartBtn').addEventListener('click', function () { player.restart(); });
+  $('scrub').addEventListener('input', function () { player.seek(parseFloat($('scrub').value)); });
+  $('speed').addEventListener('change', function () { player.speed = parseFloat($('speed').value) || 1; });
+  $('fsBtn').addEventListener('click', function () {
+    var st = $('stage');
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else if (st.requestFullscreen) { var r = st.requestFullscreen(); if (r && r.catch) r.catch(function () {}); }
+      else if (st.webkitRequestFullscreen) st.webkitRequestFullscreen();
+    } catch (e) {}
+  });
+  document.addEventListener('fullscreenchange', function () { setTimeout(player.fit, 60); });
+  document.addEventListener('keydown', function (e) {
+    if (e.code !== 'Space' || /INPUT|SELECT|BUTTON|TEXTAREA/.test((document.activeElement || {}).tagName || '')) return;
+    e.preventDefault(); player.toggle();
+  });
+
+  /* ---------- サンプルデータ（GAS_URL 未設定時のみ） ---------- */
+  function demoRows() {
+    var d = [
+      ['A', '大きい三角が、円と四角の家に勝手に入ってきて二人を追い出そうとした。二人は協力して逃げて、三角は悔しそうに家に戻った。', 'intentional', 'auto', '三角の意図と二者の協力・感情で説明している。'],
+      ['A', '三角は侵入者を検知すると追跡するセキュリティロボットのような動きだった。円と四角はそれを回避するアルゴリズム。', 'design', 'auto', '動きを機能・アルゴリズムとして説明している。'],
+      ['A', '図形が輪の周りを移動して、三角が円と四角にぶつかり、二つは左に動いて画面の外に出た。', 'physical', 'auto', '位置と接触による移動の記述に終始している。'],
+      ['A', '円と四角はカップルで、三角は元カレ。', 'intentional', 'teacher', '関係性を帰属している。'],
+      ['A', 'よくわからなかった', 'unclear', 'auto', '内容が判断できない。'],
+      ['A', '四角が来たとき円は最初少し警戒していたけど、すぐ仲良くなって一緒に家に入った。三角は二人の邪魔をした。', '', '', ''],
+      ['B', '円が坂を登りたがっていて、四角が手伝ってあげた。三角は意地悪で円を落とした。最後に円は優しい四角のところへ行った。', 'intentional', 'auto', '欲求・援助・意地悪という意図で説明している。'],
+      ['B', '円は坂で何度も転がり落ちていたが、四角に押されて上まで行った。その後三角に押されて下まで転がった。', 'physical', 'auto', '押す・転がるという力学的な記述が中心。'],
+      ['B', '坂を登るタスクに失敗するエージェントと、補助するエージェント、妨害するエージェントの比較実験のデモに見えた。', 'design', 'auto', '役割を与えられたエージェントの仕組みとして説明している。'],
+      ['B', '円ががんばっていた。', 'intentional', 'auto', '努力という内面を帰属している。'],
+      ['B', '最初に四角が円を押し上げて、次に三角が押し下げた。円は最後に四角の隣に止まった。', 'physical', 'teacher', '出来事の順序を物理的に記述している。'],
+      ['C', '三角と四角がまねっこ遊びをしていたら、小さい円が割り込んできて四角をとられた。三角はすねて離れたけど、戻ってきて仲直りした。', 'intentional', 'auto', '遊び・嫉妬・仲直りという心的状態で説明している。'],
+      ['C', '三角が四角の動きを少し遅れてコピーしていた。追従するようにプログラムされたものと、ランダムに動くものに見えた。', 'design', 'auto', '追従するプログラムとして説明している。'],
+      ['C', '三角と四角が上下に動き、小さい円が上から下に通過して四角の周りを回った。最後に円は下に消えた。', 'physical', 'auto', '軌道の記述に終始している。'],
+      ['C', '何かの儀式みたいで不思議だった。', 'unclear', 'auto', 'スタンスを判断する手がかりが乏しい。'],
+      ['C', '小さい円は最後、二人についていこうとしてあきらめたように見えた。', '', '', '']
+    ];
+    return d.map(function (x, i) {
+      return { id: 'demo' + i, videoId: x[0], text: x[1], label: x[2], source: x[3], autoLabel: x[3] === 'auto' ? x[2] : (x[3] === 'teacher' ? 'physical' : ''), reason: x[4] };
+    });
+  }
+
+  if (API.demo) $('demoBanner').hidden = false;
+  $('scrub').max = HS.SCENES[S.video].duration;
+  setTeacher(!!S.pw);
+  refresh();
+})();
+</script>
+</body>
+</html>

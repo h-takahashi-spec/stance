@@ -1,0 +1,58 @@
+/* Layout: 上映室のような暗いステージを主役に、その下に操作列と記述欄。結果サイトは同じトークンで一覧を組む。 */
+:root {
+  --bg: #eef0ee; --fg: #1d2321; --muted: #5d6763; --line: #c9cfcb; --panel: #f7f8f6; --field: #ffffff;
+  --accent: #b4532a; --on-accent: #ffffff; --danger: #b3261e; --ok: #2f7a4f;
+  --stage: #121614; --ink: #ecebe4; --ink-dim: #7c847f;
+  --st-physical: #4c5f8a; --st-design: #2f7a78; --st-intentional: #c4572e; --st-unclear: #8f887d; --st-none: #c9cfcb;
+  --display: "Shippori Mincho B1", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #1a1f1d; --fg: #e7e9e5; --muted: #9aa49f; --line: #333b37; --panel: #212825; --field: #161b19;
+    --accent: #e08a5f; --on-accent: #1a1f1d; --danger: #f2867c; --ok: #7cc79a;
+    --st-physical: #8ea2d4; --st-design: #5fb3ae; --st-intentional: #e58a62; --st-unclear: #8a857c; --st-none: #3a433f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #1a1f1d; --fg: #e7e9e5; --muted: #9aa49f; --line: #333b37; --panel: #212825; --field: #161b19;
+  --accent: #e08a5f; --on-accent: #1a1f1d; --danger: #f2867c; --ok: #7cc79a;
+  --st-physical: #8ea2d4; --st-design: #5fb3ae; --st-intentional: #e58a62; --st-unclear: #8a857c; --st-none: #3a433f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.75; -webkit-text-size-adjust: 100%; }
+[hidden] { display: none !important; }
+.wrap { max-width: 980px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 64px; display: grid; gap: 20px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .08em; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(26px, 5vw, 40px); line-height: 1.25; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 600; font-size: 21px; line-height: 1.4; margin: 0; text-wrap: balance; }
+p { margin: 0; }
+.lede { color: var(--muted); max-width: 62ch; }
+.note { font-size: 13px; color: var(--muted); }
+.banner { border: 1px dashed var(--accent); color: var(--fg); background: var(--panel); border-radius: 4px; padding: 8px 12px; font-size: 13px; }
+
+button, select, input, textarea { font: inherit; color: var(--fg); }
+button, select { font-size: 14px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; padding: 6px 12px; cursor: pointer; }
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); font-weight: 700; padding: 8px 18px; }
+button.accent { background: var(--accent); color: var(--on-accent); border-color: var(--accent); font-weight: 700; }
+input[type="text"], input[type="password"], textarea { background: var(--field); border: 1px solid var(--line); border-radius: 4px; padding: 8px 10px; width: 100%; }
+textarea { resize: vertical; min-height: 9em; line-height: 1.7; }
+textarea:disabled { opacity: .55; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.stage { position: relative; background: var(--stage); border-radius: 6px; overflow: hidden; }
+.stage canvas { display: block; width: 100%; aspect-ratio: 16 / 9; max-width: 100%; }
+.stage .tc { position: absolute; right: 12px; bottom: 8px; font-family: var(--mono); font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; pointer-events: none; }
+.stage .bigplay { position: absolute; inset: 0; margin: auto; width: max-content; height: max-content; background: rgba(18, 22, 20, .75); color: var(--ink); border: 1px solid var(--ink-dim); font-size: 17px; padding: 12px 26px; border-radius: 999px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; }
+.scrub { flex: 1 1 220px; display: flex; align-items: center; gap: 10px; min-width: 0; }
+.scrub input { flex: 1; min-width: 0; accent-color: var(--accent); }
+.time { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>図形の動き 3本</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Shippori+Mincho+B1:wght@600;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="common.css">
+<style>
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 14px; }
+  .field { display: grid; gap: 6px; max-width: 360px; }
+  .field label { font-weight: 700; }
+  .rules { margin: 0; padding-left: 1.3em; display: grid; gap: 4px; }
+  .steps { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .pips { display: flex; gap: 6px; }
+  .pips i { width: 28px; height: 6px; border-radius: 3px; background: var(--line); display: block; }
+  .pips i.done { background: var(--fg); }
+  .pips i.now { background: var(--accent); }
+  .steplabel { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .q { font-weight: 700; font-size: 16px; }
+  .answer { display: grid; gap: 8px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+  .count { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .count.ok { color: var(--ok); }
+  .err { color: var(--danger); font-size: 14px; flex: 1 1 200px; min-width: 0; }
+  .foot { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+  .linkbtn { background: none; border: 0; padding: 0; color: var(--muted); text-decoration: underline; font-size: 13px; }
+  .done-mark { font-family: var(--display); font-size: 22px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="demoBanner" class="banner" hidden>テストモードです。config.js に GAS_URL が設定されていないため、回答は送信されません。</div>
+
+  <!-- 開始画面 -->
+  <section id="intro" class="card" aria-labelledby="introTitle">
+    <div class="eyebrow" id="course">授業ワーク</div>
+    <h1 id="introTitle">図形の動きを見て、何が起きたかを書く</h1>
+    <p class="lede">円や四角や三角が動くだけの、音のない短い動画（各1分ほど）を3本見ます。1本見るごとに、その動画で何が起きていたかを自由に書いてください。</p>
+    <ul class="rules">
+      <li>正解はありません。見えたとおり、思ったとおりに書いてください。</li>
+      <li>動画は何回でも見直せます。最後まで一度見ると記入欄が使えるようになります。</li>
+      <li>全部で10〜15分ほどかかります。</li>
+    </ul>
+    <div class="field">
+      <label for="studentId">学籍番号</label>
+      <input type="text" id="studentId" inputmode="text" autocomplete="off" maxlength="20" placeholder="例：2412345">
+    </div>
+    <p class="note">書いた内容は、学籍番号を伏せた状態で授業内で共有し、AIを使って分類します。学籍番号は出席と加点の確認だけに使います。</p>
+    <div class="row">
+      <span class="err" id="introErr" role="alert"></span>
+      <button class="primary" id="startBtn">はじめる</button>
+    </div>
+  </section>
+
+  <!-- 動画と記述 -->
+  <section id="task" hidden aria-labelledby="taskTitle">
+    <div style="display:grid;gap:14px">
+      <div class="steps">
+        <span class="steplabel" id="stepLabel">1 / 3</span>
+        <div class="pips" aria-hidden="true"><i></i><i></i><i></i></div>
+      </div>
+      <h2 id="taskTitle">1本目の動画</h2>
+      <div class="stage">
+        <canvas id="cv" aria-label="図形が動く無音の動画"></canvas>
+        <button class="bigplay" id="bigPlay">▶ 再生する</button>
+        <div class="tc" id="tc">0:00</div>
+      </div>
+      <div class="bar">
+        <button class="primary" id="playBtn">▶ 再生</button>
+        <button id="restartBtn">最初から</button>
+        <div class="scrub">
+          <input type="range" id="scrub" min="0" max="60" step="0.1" value="0" aria-label="再生位置">
+          <span class="time" id="time">0:00 / 1:00</span>
+        </div>
+      </div>
+      <div class="answer">
+        <label for="answer" class="q">この動画で何が起きていたか、自由に説明してください。</label>
+        <p class="note" id="answerHint">動画を最後まで一度見ると、書けるようになります。</p>
+        <textarea id="answer" rows="7" disabled></textarea>
+        <div class="row">
+          <span class="count" id="count">0字</span>
+          <span class="err" id="taskErr" role="alert"></span>
+          <button class="primary" id="submitBtn" disabled>送信して次へ</button>
+        </div>
+      </div>
+      <div class="foot">
+        <span id="whoami"></span>
+        <button class="linkbtn" id="resetBtn">学籍番号を入れ直す</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 完了 -->
+  <section id="done" class="card" hidden aria-labelledby="doneTitle">
+    <p class="done-mark">3本とも送信しました</p>
+    <h2 id="doneTitle">おつかれさまでした</h2>
+    <p>このあと授業で、みんなの書いた解釈を見ながら分類します。指示があるまで、このページはそのままで大丈夫です。</p>
+    <p class="note"><a href="results.html">みんなの解釈を見る</a>（先生の合図があってから開いてください）</p>
+  </section>
+</div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script src="scenes.js"></script>
+<script>
+(function () {
+  'use strict';
+  var CFG = window.APP_CONFIG || {};
+  var MIN = Number(CFG.MIN_CHARS) || 20;
+  var KEY = 'hs-stance-progress-v1';
+  var $ = function (id) { return document.getElementById(id); };
+
+  if (API.demo) $('demoBanner').hidden = false;
+  if (CFG.COURSE_LABEL) $('course').textContent = CFG.COURSE_LABEL + '・授業ワーク';
+
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { return null; } }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  function clear() { try { localStorage.removeItem(KEY); } catch (e) {} }
+  function draftKey() { return KEY + ':draft:' + state.order[state.idx]; }
+  function uuid() {
+    if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) { var r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
+  }
+  function shuffle(a) { a = a.slice(); for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  var state = load();
+  var player = null, watchedOnce = false, plays = 0, watched = 0;
+
+  function show(id) { ['intro', 'task', 'done'].forEach(function (s) { $(s).hidden = s !== id; }); window.scrollTo(0, 0); }
+
+  /* ---------- 開始 ---------- */
+  $('startBtn').addEventListener('click', function () {
+    var sid = $('studentId').value.trim().replace(/\s+/g, '');
+    if (!/^[0-9A-Za-z\-]{3,20}$/.test(sid)) { $('introErr').textContent = '学籍番号を半角英数字で入力してください。'; $('studentId').focus(); return; }
+    $('introErr').textContent = '';
+    state = { sessionId: uuid(), studentId: sid, order: shuffle(['A', 'B', 'C']), idx: 0 };
+    save(state);
+    startVideo();
+  });
+  $('studentId').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('startBtn').click(); });
+
+  $('resetBtn').addEventListener('click', function () {
+    if (player) player.pause();
+    clear(); state = null; $('studentId').value = ''; show('intro'); $('studentId').focus();
+  });
+
+  /* ---------- 動画 ---------- */
+  function startVideo() {
+    var vid = state.order[state.idx], sc = HS.SCENES[vid];
+    show('task');
+    $('stepLabel').textContent = (state.idx + 1) + ' / 3';
+    $('taskTitle').textContent = (state.idx + 1) + '本目の動画';
+    $('whoami').textContent = '学籍番号 ' + state.studentId;
+    Array.prototype.forEach.call(document.querySelectorAll('.pips i'), function (el, i) {
+      el.className = i < state.idx ? 'done' : (i === state.idx ? 'now' : '');
+    });
+    $('scrub').max = sc.duration;
+    watchedOnce = false; plays = 0; watched = 0;
+    var draft = ''; try { draft = localStorage.getItem(draftKey()) || ''; } catch (e) {}
+    $('answer').value = draft;
+    if (draft) watchedOnce = true;
+    $('taskErr').textContent = '';
+    $('bigPlay').hidden = false;
+    $('bigPlay').textContent = '▶ 再生する';
+    if (!player) {
+      player = HS.createPlayer($('cv'), sc, {
+        onTime: updateTime,
+        onState: updateState,
+        onEnd: function () { watchedOnce = true; updateAnswerState(); },
+        onStartFromZero: function () { plays++; },
+        onAdvance: function (dt) { watched += dt; }
+      });
+    } else {
+      player.setScene(sc);
+    }
+    updateTime(player); updateState(player); updateAnswerState();
+  }
+
+  function updateTime(p) {
+    $('scrub').value = p.t.toFixed(1);
+    $('time').textContent = HS.fmt(p.t) + ' / ' + HS.fmt(p.scene.duration);
+    $('tc').textContent = HS.fmt(p.t);
+  }
+  function updateState(p) {
+    $('playBtn').textContent = p.playing ? '❚❚ 一時停止' : '▶ 再生';
+    if (p.playing) $('bigPlay').hidden = true;
+    else if (p.t >= p.scene.duration) { $('bigPlay').hidden = false; $('bigPlay').textContent = '↻ もう一度見る'; }
+  }
+  function updateAnswerState() {
+    var ta = $('answer');
+    ta.disabled = !watchedOnce;
+    $('answerHint').textContent = watchedOnce
+      ? '見直しは何回でもできます。' + MIN + '字以上で書いてください。'
+      : '動画を最後まで一度見ると、書けるようになります。';
+    updateCount();
+  }
+  function updateCount() {
+    var n = $('answer').value.trim().length;
+    $('count').textContent = n + '字' + (n < MIN ? '（あと' + (MIN - n) + '字）' : '');
+    $('count').className = 'count' + (n >= MIN ? ' ok' : '');
+    $('submitBtn').disabled = !watchedOnce || n < MIN;
+  }
+
+  $('bigPlay').addEventListener('click', function () { if (player.t >= player.scene.duration) player.restart(); else player.play(); });
+  $('playBtn').addEventListener('click', function () { player.toggle(); });
+  $('restartBtn').addEventListener('click', function () { player.restart(); });
+  $('scrub').addEventListener('input', function () { player.seek(parseFloat($('scrub').value)); });
+  $('answer').addEventListener('input', function () {
+    updateCount();
+    try { localStorage.setItem(draftKey(), $('answer').value); } catch (e) {}
+  });
+
+  /* ---------- 送信 ---------- */
+  $('submitBtn').addEventListener('click', async function () {
+    var btn = $('submitBtn'), text = $('answer').value.trim();
+    if (text.length < MIN) return;
+    btn.disabled = true; btn.textContent = '送信しています…'; $('taskErr').textContent = '';
+    if (player) player.pause();
+    try {
+      await API.post({
+        action: 'submit',
+        sessionId: state.sessionId,
+        studentId: state.studentId,
+        videoId: state.order[state.idx],
+        position: state.idx + 1,
+        order: state.order.join(''),
+        text: text,
+        plays: plays,
+        watchedSec: Math.round(watched),
+        userAgent: navigator.userAgent
+      });
+      try { localStorage.removeItem(draftKey()); } catch (e) {}
+      state.idx++; save(state);
+      btn.textContent = '送信して次へ';
+      if (state.idx >= 3) show('done'); else startVideo();
+    } catch (err) {
+      $('taskErr').textContent = err.message + ' 書いた内容は消えていません。';
+      btn.textContent = 'もう一度送信する';
+      btn.disabled = false;
+    }
+  });
+
+  /* ---------- 再開 ---------- */
+  if (state && state.order && state.studentId) {
+    if (state.idx >= 3) show('done'); else startVideo();
+  } else {
+    show('intro');
+  }
+})();
+</script>
+</body>
+</html>
